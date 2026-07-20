@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'nomad'
+    metrics_path: '/v1/metrics'
+    params:
+      format: ['prometheus']
+    static_configs:
+      - targets: ['nomad-server-01:4646', 'nomad-server-02:4646', 'nomad-server-03:4646']
+
+  - job_name: 'consul'
+    metrics_path: '/v1/agent/metrics'
+    params:
+      format: ['prometheus']
+    # If Consul ACLs are enabled:
+    # bearer_token: 'YOUR_CONSUL_ACL_TOKEN'
+    static_configs:
+      - targets: ['consul-agent-01:8500', 'consul-agent-02:8500']
+
+  - job_name: 'vault'
+    metrics_path: '/v1/sys/metrics'
+    params:
+      format: ['prometheus']
+    # If unauthenticated_metrics_access is false:
+    # bearer_token: 'YOUR_VAULT_PROMETHEUS_TOKEN'
+    static_configs:
+      - targets: ['vault-01:8200', 'vault-02:8200', 'vault-03:8200']

@@ -1,0 +1,77 @@
+# Monitoring Stack: Prometheus + Alertmanager + Grafana
+
+services:
+  # =========================================
+  # Prometheus
+  # =========================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus_alert_rules.yml:/etc/prometheus/prometheus_alert_rules.yml:ro
+      - ./monitoring/prometheus_recording_rules.yml:/etc/prometheus/prometheus_recording_rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    networks:
+      - monitoring
+
+  # =========================================
+  # Alertmanager
+  # =========================================
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - monitoring
+
+  # =========================================
+  # Grafana
+  # =========================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./tasks/nomad_grafana_dashboard/nomad_cluster_health_dashboard.json:/var/lib/grafana/dashboards/nomad_cluster_health.json:ro
+      - ./tasks/consul_grafana_dashboard/consul_cluster_health_dashboard.json:/var/lib/grafana/dashboards/consul_cluster_health.json:ro
+      - ./tasks/vault_grafana_dashboard/vault_cluster_health_dashboard.json:/var/lib/grafana/dashboards/vault_cluster_health.json:ro
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+
+volumes:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
+
+networks:
+  monitoring:
+    driver: bridge

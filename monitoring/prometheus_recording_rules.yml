@@ -1,0 +1,84 @@
+# =========================================
+# Prometheus Recording Rules
+# =========================================
+# Pre-compute expensive queries for Grafana dashboards
+# to reduce query load and improve panel rendering speed.
+
+groups:
+  - name: nomad_recording_rules
+    interval: 30s
+    rules:
+      # Cluster-wide CPU allocation percentage
+      - record: nomad:cluster_cpu_allocated_percent
+        expr: |
+          (sum(nomad_client_allocated_cpu) /
+           (sum(nomad_client_allocated_cpu) + sum(nomad_client_unallocated_cpu)))
+          * 100
+
+      # Cluster-wide Memory allocation percentage
+      - record: nomad:cluster_memory_allocated_percent
+        expr: |
+          (sum(nomad_client_allocated_memory) /
+           (sum(nomad_client_allocated_memory) + sum(nomad_client_unallocated_memory)))
+          * 100
+
+      # Total running allocations across all clients
+      - record: nomad:total_running_allocations
+        expr: sum(nomad_client_allocations_running)
+
+      # Total failed allocations across all clients
+      - record: nomad:total_failed_allocations
+        expr: sum(nomad_client_allocations_failed)
+
+      # Number of active Nomad client nodes
+      - record: nomad:active_client_count
+        expr: count(nomad_client_allocated_cpu)
+
+  - name: consul_recording_rules
+    interval: 30s
+    rules:
+      # Total services with critical health checks
+      - record: consul:critical_service_count
+        expr: count(consul_health_service_status{status="critical"}) or vector(0)
+
+      # RPC error rate (5m smoothed)
+      - record: consul:rpc_error_rate_5m
+        expr: sum(rate(consul_rpc_request_error[5m]))
+
+      # Total alive Serf members
+      - record: consul:alive_member_count
+        expr: count(consul_serf_member_status == 1)
+
+  - name: vault_recording_rules
+    interval: 30s
+    rules:
+      # Token creation rate (5m smoothed)
+      - record: vault:token_creation_rate_5m
+        expr: sum(rate(vault_token_creation[5m]))
+
+      # Average barrier GET latency
+      - record: vault:barrier_get_avg_ms
+        expr: avg(vault_barrier_get)
+
+      # Average barrier PUT latency
+      - record: vault:barrier_put_avg_ms
+        expr: avg(vault_barrier_put)
+
+  - name: node_recording_rules
+    interval: 30s
+    rules:
+      # Per-instance CPU usage percentage
+      - record: node:cpu_usage_percent
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+
+      # Per-instance Memory usage percentage
+      - record: node:memory_usage_percent
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+
+      # Per-instance Disk usage percentage (non-tmpfs)
+      - record: node:disk_usage_percent
+        expr: |
+          (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.*"}
+                / node_filesystem_size_bytes{fstype!~"tmpfs|fuse.*"})) * 100

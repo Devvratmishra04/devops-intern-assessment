@@ -1,0 +1,328 @@
+groups:
+  # =========================================
+  # Nomad Alert Rules
+  # =========================================
+  - name: nomad_cluster_alerts
+    rules:
+      - alert: NomadNoLeader
+        expr: count(nomad_nomad_raft_state == 1) == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: nomad
+        annotations:
+          summary: "Nomad cluster has no active Raft leader"
+          description: "No Nomad server node is reporting as Raft leader for over 1 minute. The cluster cannot schedule or manage jobs."
+          runbook_url: "https://github.com/Devvratmishra04/devops-intern-assessment/blob/main/tasks/alerting_rules/ALERTING_RUNBOOK.md#nomadnoleader"
+
+      - alert: NomadHighMemberlistHealthScore
+        expr: max(nomad_nomad_memberlist_health_score) > 3
+        for: 2m
+        labels:
+          severity: warning
+          service: nomad
+        annotations:
+          summary: "Nomad memberlist health score is elevated ({{ $value }})"
+          description: "A Nomad node's gossip memberlist health score exceeds 3, indicating network instability or degraded communication."
+          runbook_url: "https://github.com/Devvratmishra04/devops-intern-assessment/blob/main/tasks/alerting_rules/ALERTING_RUNBOOK.md#nomadhighmemberlisthealthscore"
+
+      - alert: NomadRaftLeaderContactHigh
+        expr: nomad_nomad_raft_leader_last_contact > 500
+        for: 2m
+        labels:
+          severity: warning
+          service: nomad
+        annotations:
+          summary: "Nomad Raft leader contact latency is high ({{ $value }}ms)"
+          description: "Raft follower on {{ $labels.instance }} has not contacted the leader in over 500ms. Risk of leadership election."
+
+      - alert: NomadJobFailed
+        expr: nomad_nomad_job_status{status="dead"} > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: nomad
+        annotations:
+          summary: "Nomad job {{ $labels.job }} is dead"
+          description: "Job {{ $labels.job }} has been in 'dead' state for over 5 minutes."
+
+      - alert: NomadHighCPUUtilization
+        expr: (sum(nomad_client_allocated_cpu) / (sum(nomad_client_allocated_cpu) + sum(nomad_client_unallocated_cpu))) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: nomad
+        annotations:
+          summary: "Nomad cluster CPU allocation is above 85% ({{ $value | printf \"%.1f\" }}%)"
+          description: "Over 85% of total cluster CPU capacity is allocated. Consider adding client nodes."
+
+      - alert: NomadHighMemoryUtilization
+        expr: (sum(nomad_client_allocated_memory) / (sum(nomad_client_allocated_memory) + sum(nomad_client_unallocated_memory))) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: nomad
+        annotations:
+          summary: "Nomad cluster memory allocation is above 85% ({{ $value | printf \"%.1f\" }}%)"
+          description: "Over 85% of total cluster memory is allocated. Consider adding client nodes."
+
+      - alert: NomadDeploymentFailed
+        expr: increase(nomad_nomad_deployments_failed[15m]) > 0
+        labels:
+          severity: warning
+          service: nomad
+        annotations:
+          summary: "Nomad deployment failure detected"
+          description: "One or more Nomad deployments have failed in the last 15 minutes."
+
+  # =========================================
+  # Consul Alert Rules
+  # =========================================
+  - name: consul_cluster_alerts
+    rules:
+      - alert: ConsulNoLeader
+        expr: count(consul_raft_state == 1) == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: consul
+        annotations:
+          summary: "Consul cluster has no active Raft leader"
+          description: "No Consul server is reporting as Raft leader. Service discovery and KV operations will fail."
+          runbook_url: "https://github.com/Devvratmishra04/devops-intern-assessment/blob/main/tasks/alerting_rules/ALERTING_RUNBOOK.md#consulnoleader"
+
+      - alert: ConsulLeaderContactHigh
+        expr: consul_raft_leader_lastContact > 500
+        for: 2m
+        labels:
+          severity: warning
+          service: consul
+        annotations:
+          summary: "Consul Raft leader contact latency high ({{ $value }}ms)"
+          description: "Consul server {{ $labels.instance }} has not contacted the Raft leader in over 500ms."
+
+      - alert: ConsulServiceCritical
+        expr: consul_health_service_status{status="critical"} > 0
+        for: 2m
+        labels:
+          severity: warning
+          service: consul
+        annotations:
+          summary: "Consul service health check critical: {{ $labels.service_name }}"
+          description: "Service {{ $labels.service_name }} on {{ $labels.node }} has a critical health check for over 2 minutes."
+
+      - alert: ConsulNodeFailed
+        expr: consul_serf_member_status == 4
+        for: 1m
+        labels:
+          severity: critical
+          service: consul
+        annotations:
+          summary: "Consul node {{ $labels.node }} is in Failed state"
+          description: "Serf reports node {{ $labels.node }} has failed gossip protocol health checks."
+          runbook_url: "https://github.com/Devvratmishra04/devops-intern-assessment/blob/main/tasks/alerting_rules/ALERTING_RUNBOOK.md#consulnodefailed"
+
+      - alert: ConsulRPCErrors
+        expr: rate(consul_rpc_request_error[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: consul
+        annotations:
+          summary: "Consul RPC error rate elevated"
+          description: "Consul RPC errors on {{ $labels.instance }} exceed 1/sec over the last 5 minutes."
+
+  # =========================================
+  # Vault Alert Rules
+  # =========================================
+  - name: vault_cluster_alerts
+    rules:
+      - alert: VaultSealed
+        expr: vault_core_unsealed == 0
+        for: 0m
+        labels:
+          severity: critical
+          service: vault
+        annotations:
+          summary: "Vault instance {{ $labels.instance }} is SEALED"
+          description: "Vault node {{ $labels.instance }} is sealed. All secret operations will fail until manual unseal."
+          runbook_url: "https://github.com/Devvratmishra04/devops-intern-assessment/blob/main/tasks/alerting_rules/ALERTING_RUNBOOK.md#vaultsealed"
+
+      - alert: VaultNoActiveNode
+        expr: count(vault_core_active == 1) == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: vault
+        annotations:
+          summary: "No active Vault node in HA cluster"
+          description: "No Vault node is reporting as the active leader. All Vault operations will fail."
+
+      - alert: VaultAuditLogFailure
+        expr: vault_audit_log_request_failure > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: vault
+        annotations:
+          summary: "Vault audit log write FAILURE on {{ $labels.instance }}"
+          description: "Vault blocks ALL requests when audit logging fails. Immediate investigation required."
+          runbook_url: "https://github.com/Devvratmishra04/devops-intern-assessment/blob/main/tasks/alerting_rules/ALERTING_RUNBOOK.md#vaultauditlogfailure"
+
+      - alert: VaultHighBarrierGetLatency
+        expr: vault_barrier_get > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: vault
+        annotations:
+          summary: "Vault barrier GET latency is high ({{ $value }}ms)"
+          description: "Storage backend read latency on {{ $labels.instance }} exceeds 100ms. Check backend health."
+
+      - alert: VaultHighBarrierPutLatency
+        expr: vault_barrier_put > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: vault
+        annotations:
+          summary: "Vault barrier PUT latency is high ({{ $value }}ms)"
+          description: "Storage backend write latency on {{ $labels.instance }} exceeds 100ms. Check backend health."
+
+      - alert: VaultHighLeaseCount
+        expr: vault_expire_num_leases > 10000
+        for: 5m
+        labels:
+          severity: warning
+          service: vault
+        annotations:
+          summary: "Vault active lease count is very high ({{ $value }})"
+          description: "Over 10,000 active leases may degrade Vault performance. Review lease TTLs and revocation policies."
+
+  # =========================================
+  # Infrastructure & Prometheus Self-Monitoring
+  # =========================================
+  - name: infrastructure_alerts
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: prometheus
+        annotations:
+          summary: "Scrape target {{ $labels.instance }} (job={{ $labels.job }}) is DOWN"
+          description: "Prometheus cannot reach {{ $labels.instance }}. The target may be crashed, unreachable, or misconfigured."
+
+      - alert: PrometheusScrapeErrors
+        expr: increase(prometheus_target_scrapes_exceeded_sample_limit_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: prometheus
+        annotations:
+          summary: "Prometheus scrape sample limit exceeded"
+          description: "Target {{ $labels.job }} is exceeding the scrape sample limit. Some metrics may be dropped."
+
+      - alert: PrometheusConfigReloadFailed
+        expr: prometheus_config_last_reload_successful == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: prometheus
+        annotations:
+          summary: "Prometheus configuration reload FAILED"
+          description: "The last Prometheus config reload failed. Alerting rules and scrape targets may be stale."
+
+      - alert: PrometheusRuleEvaluationSlow
+        expr: prometheus_rule_group_last_duration_seconds > prometheus_rule_group_interval_seconds
+        for: 10m
+        labels:
+          severity: warning
+          service: prometheus
+        annotations:
+          summary: "Prometheus rule evaluation is too slow"
+          description: "Rule group {{ $labels.rule_group }} evaluation is taking longer than the evaluation interval. Alerts may be delayed."
+
+      - alert: PrometheusStorageAlmostFull
+        expr: (prometheus_tsdb_storage_blocks_bytes / (1024*1024*1024)) > 40
+        for: 15m
+        labels:
+          severity: warning
+          service: prometheus
+        annotations:
+          summary: "Prometheus TSDB storage exceeds 40GB"
+          description: "Current TSDB block storage is {{ $value | printf \"%.1f\" }}GB. Consider adjusting retention or adding disk."
+
+      - alert: PrometheusTSDBReloadFailures
+        expr: increase(prometheus_tsdb_reloads_failures_total[5m]) > 0
+        labels:
+          severity: warning
+          service: prometheus
+        annotations:
+          summary: "Prometheus TSDB reload failures detected"
+          description: "TSDB block reload failures occurred. Data integrity may be affected."
+
+  # =========================================
+  # Node / Host-Level Alerts
+  # =========================================
+  - name: node_host_alerts
+    rules:
+      - alert: NodeHighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+          service: node
+        annotations:
+          summary: "Host CPU usage is above 85% on {{ $labels.instance }}"
+          description: "CPU usage on {{ $labels.instance }} has been above 85% for over 10 minutes. Investigate workloads."
+
+      - alert: NodeHighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          service: node
+        annotations:
+          summary: "Host memory usage is above 85% on {{ $labels.instance }}"
+          description: "Memory usage on {{ $labels.instance }} is {{ $value | printf \"%.1f\" }}%. Risk of OOM kills."
+
+      - alert: NodeDiskAlmostFull
+        expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.*"} / node_filesystem_size_bytes{fstype!~"tmpfs|fuse.*"})) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          service: node
+        annotations:
+          summary: "Disk usage above 80% on {{ $labels.instance }} ({{ $labels.mountpoint }})"
+          description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $value | printf \"%.1f\" }}% full."
+
+      - alert: NodeDiskFull
+        expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.*"} / node_filesystem_size_bytes{fstype!~"tmpfs|fuse.*"})) * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+          service: node
+        annotations:
+          summary: "CRITICAL: Disk usage above 95% on {{ $labels.instance }} ({{ $labels.mountpoint }})"
+          description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $value | printf \"%.1f\" }}% full. Immediate action required."
+
+      - alert: NodeOOMKillDetected
+        expr: increase(node_vmstat_oom_kill[5m]) > 0
+        labels:
+          severity: critical
+          service: node
+        annotations:
+          summary: "OOM Kill detected on {{ $labels.instance }}"
+          description: "The Linux kernel OOM killer was invoked on {{ $labels.instance }}. A process was killed due to memory exhaustion."
+
+      - alert: NodeClockSkew
+        expr: abs(node_timex_offset_seconds) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: node
+        annotations:
+          summary: "Clock skew detected on {{ $labels.instance }} ({{ $value }}s)"
+          description: "System clock on {{ $labels.instance }} is drifting by {{ $value }}s. This can cause TLS failures, Raft issues, and log ordering problems."
