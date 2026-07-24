@@ -1,4 +1,4 @@
-# Monitoring Stack: Prometheus + Alertmanager + Grafana
+version: '3.8'
 
 services:
   # =========================================
@@ -62,8 +62,55 @@ services:
       - ./tasks/nomad_grafana_dashboard/nomad_cluster_health_dashboard.json:/var/lib/grafana/dashboards/nomad_cluster_health.json:ro
       - ./tasks/consul_grafana_dashboard/consul_cluster_health_dashboard.json:/var/lib/grafana/dashboards/consul_cluster_health.json:ro
       - ./tasks/vault_grafana_dashboard/vault_cluster_health_dashboard.json:/var/lib/grafana/dashboards/vault_cluster_health.json:ro
+      - ./tasks/app_logs_dashboard/app_logs_dashboard.json:/var/lib/grafana/dashboards/app_logs_dashboard.json:ro
+      - ./tasks/node_observability_dashboard/node_observability_dashboard.json:/var/lib/grafana/dashboards/node_observability_dashboard.json:ro
     depends_on:
       - prometheus
+      - loki
+    networks:
+      - monitoring
+
+  # =========================================
+  # Loki (App Logs)
+  # =========================================
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki-config.yaml:/etc/loki/config.yaml:ro
+    command: -config.file=/etc/loki/config.yaml
+    networks:
+      - monitoring
+
+  # =========================================
+  # Promtail (Log Shipper)
+  # =========================================
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      # Mounting a dummy app log directory or docker daemon logs for demonstration
+      # On Docker Desktop Windows, getting host logs requires specific paths.
+      # We'll just configure it to scrape its own logs and any /var/log paths accessible to the container.
+      - /var/log:/var/log:ro
+    command: -config.file=/etc/promtail/config.yaml
+    networks:
+      - monitoring
+
+  # =========================================
+  # Node Exporter (Node Observability)
+  # =========================================
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
     networks:
       - monitoring
 

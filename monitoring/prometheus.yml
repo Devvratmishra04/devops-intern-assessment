@@ -94,3 +94,12 @@ scrape_configs:
           - 'vault-03:8200'
         labels:
           cluster: 'vault'
+
+  # =========================================
+  # Node Exporter (Node Observability)
+  # =========================================
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          instance: 'docker-host'
