@@ -32,3 +32,13 @@ jobs:
 
       - name: Run Docker container
         run: docker run --rm hello-devops:latest
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'hello-devops:latest'
+          format: 'table'
+          exit-code: '0' # Non-blocking (learning period)
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'

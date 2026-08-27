@@ -1,5 +1,10 @@
 # DevOps Intern – Final Assessment
 
+[![CI Pipeline](https://github.com/Devvratmishra04/devops-intern-assessment/actions/workflows/ci.yml/badge.svg)](https://github.com/Devvratmishra04/devops-intern-assessment/actions/workflows/ci.yml)
+
+**Author:** Devvrat Mishra  
+**Date:** 2026-08-27
+
 A complete DevOps pipeline demonstrating Git, Linux scripting, Docker, CI/CD, Nomad orchestration, Grafana Loki monitoring, and MLflow experiment tracking.
 
 ---
