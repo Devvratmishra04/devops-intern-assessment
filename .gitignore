@@ -22,3 +22,10 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Private Local Task Trackers & Notes (Never pushed to remote)
+INTERNAL_WORK_TRACKER.md
+_local_notes/
+local_tracker/
+*.local.md
+
