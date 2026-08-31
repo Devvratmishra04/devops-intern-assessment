@@ -1,0 +1,4 @@
+﻿flask>=3.0.0
+django>=4.2.0
+semgrep>=1.60.0
+bandit>=1.7.5

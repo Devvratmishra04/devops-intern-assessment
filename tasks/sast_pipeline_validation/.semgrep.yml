@@ -1,0 +1,91 @@
+﻿rules:
+  - id: flask-raw-sql-injection
+    patterns:
+      - pattern-either:
+          - pattern: $CURSOR.execute(f"...", ...)
+          - pattern: $CURSOR.execute("..." % (...), ...)
+          - pattern: $CURSOR.execute("...".format(...), ...)
+          - pattern: |
+              $QUERY = f"..."
+              ...
+              $CURSOR.execute($QUERY, ...)
+      - pattern-inside: |
+          @$APP.route(...)
+          def $FUNC(...):
+              ...
+    message: "Detected potential SQL injection via unparameterized query in Flask route. Use parameterized SQL queries instead."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      confidence: HIGH
+
+  - id: django-raw-sql-concatenation
+    patterns:
+      - pattern-either:
+          - pattern: $CURSOR.execute(f"...", ...)
+          - pattern: $CURSOR.execute("..." % (...), ...)
+          - pattern: $CURSOR.execute("...".format(...), ...)
+          - pattern: |
+              $QUERY = f"..."
+              ...
+              $CURSOR.execute($QUERY, ...)
+      - pattern-inside: |
+          def $VIEW(request, ...):
+              ...
+    message: "Detected potential SQL injection in Django view using unparameterized raw SQL. Use parameterized execution: cursor.execute(query, [params])."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      confidence: HIGH
+
+  - id: flask-ssti-render-template-string
+    patterns:
+      - pattern: flask.render_template_string(f"...", ...)
+      - pattern-inside: |
+          @$APP.route(...)
+          def $FUNC(...):
+              ...
+    message: "Detected Server-Side Template Injection (SSTI) risk in Flask render_template_string with dynamic formatting."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-1336: Improper Neutralization of Special Elements in Output Used by a Template Engine"
+      owasp: "A03:2021 - Injection"
+      confidence: HIGH
+
+  - id: hardcoded-secret-credential
+    patterns:
+      - pattern-either:
+          - pattern: $KEY = "..."
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: (?i)(api_key|secret_key|private_key|auth_token|vault_token|password)
+      - metavariable-regex:
+          metavariable: "..."
+          regex: ^[A-Za-z0-9_\-]{20,}$
+    message: "Hardcoded secret or credential detected in source code. Store secrets in HashiCorp Vault or environment variables."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      confidence: HIGH
+
+  - id: flask-debug-mode-enabled
+    patterns:
+      - pattern: $APP.run(..., debug=True, ...)
+    message: "Flask application executed with debug=True. Debug mode leaks interactive shell and stack trace in production."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-215: Insertion of Sensitive Information Into Debugging Code"
+      confidence: HIGH

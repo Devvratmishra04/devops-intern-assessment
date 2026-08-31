@@ -1,0 +1,17 @@
+﻿# Semgrep Ignore Rules
+# Ignore virtual environments, tests, fixtures, and documentation to prevent scan noise
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+node_modules/
+dist/
+build/
+.git/
+.github/
+*.min.js
+*.min.css
+tests/fixtures/
+*.xlsx
+*.log
