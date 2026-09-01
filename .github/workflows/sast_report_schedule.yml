@@ -1,0 +1,51 @@
+﻿name: Scheduled SAST Status Report (DEV-460)
+
+on:
+  schedule:
+    # Run every Monday at 09:00 AM UTC (Regular team status update)
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    # Allows manual trigger anytime from GitHub Actions UI
+
+jobs:
+  dispatch-sast-report:
+    name: Dispatch SAST Status Report to Team
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Retrieve Webhook Tokens from HashiCorp Vault
+        uses: hashicorp/vault-action@v3
+        continue-on-error: true
+        with:
+          url: ${{ secrets.VAULT_ADDR || 'http://127.0.0.1:8200' }}
+          method: approle
+          roleId: ${{ secrets.VAULT_ROLE_ID }}
+          secretId: ${{ secrets.VAULT_SECRET_ID }}
+          secrets: |
+            secret/data/ci/sast SAST_WEBHOOK_URL | SLACK_WEBHOOK_URL ;
+            secret/data/ci/sast TEAMS_WEBHOOK_URL | TEAMS_WEBHOOK_URL ;
+            secret/data/ci/sast DISCORD_WEBHOOK_URL | DISCORD_WEBHOOK_URL
+
+      - name: Run SAST Report Dispatcher
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python tasks/sast_report_automation/send_sast_report.py --output-file=sast_status_summary.md
+
+      - name: Upload Report Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sast-delivery-status-report
+          path: sast_status_summary.md
+          retention-days: 30
