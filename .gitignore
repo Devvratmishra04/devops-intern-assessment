@@ -25,7 +25,10 @@ Thumbs.db
 
 # Private Local Task Trackers & Notes (Never pushed to remote)
 INTERNAL_WORK_TRACKER.md
+INTERNAL_WORK_TRACKER.docx
 _local_notes/
 local_tracker/
 *.local.md
+*.local.docx
+
 
