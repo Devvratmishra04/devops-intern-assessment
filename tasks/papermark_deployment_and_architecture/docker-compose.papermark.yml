@@ -1,0 +1,103 @@
+﻿version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL Database
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: papermark-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: papermark_secure_pass
+      POSTGRES_DB: papermark
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - papermark-network
+
+  # ----------------------------------------------------------------------------
+  # 2. MinIO (S3-Compatible Object Storage for Local / Self-Hosted Deployments)
+  # ----------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: papermark-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpass
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web Console
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - papermark-network
+
+  # MinIO Bucket Auto-Provisioning Helper
+  minio-create-bucket:
+    image: minio/mc:latest
+    container_name: papermark-minio-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set local http://minio:9000 minioadmin minioadminpass;
+      /usr/bin/mc mb local/papermark-documents || true;
+      /usr/bin/mc anonymous set none local/papermark-documents;
+      exit 0;
+      "
+    networks:
+      - papermark-network
+
+  # ----------------------------------------------------------------------------
+  # 3. Papermark Web Application (Next.js + Prisma)
+  # ----------------------------------------------------------------------------
+  papermark:
+    image: mfts/papermark:latest
+    container_name: papermark-web
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://postgres:papermark_secure_pass@postgres:5432/papermark?schema=public"
+      NEXTAUTH_SECRET: "e9f0c2a87b14d89a9c3b8e4f1a2d5e7c8b0a9f3e6d2c1b5a8f7e4d1c9b2a5f8"
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+      S3_ENDPOINT: "http://minio:9000"
+      S3_REGION: "auto"
+      S3_BUCKET: "papermark-documents"
+      S3_ACCESS_KEY: "minioadmin"
+      S3_SECRET_KEY: "minioadminpass"
+      S3_FORCE_PATH_STYLE: "true"
+      NODE_ENV: "production"
+    ports:
+      - "3000:3000"
+    networks:
+      - papermark-network
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  papermark-network:
+    driver: bridge

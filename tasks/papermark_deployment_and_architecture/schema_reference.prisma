@@ -1,0 +1,174 @@
+﻿// =============================================================================
+// Papermark Prisma Schema Reference & Data Model Architecture
+// =============================================================================
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -----------------------------------------------------------------------------
+// 1. Authentication Models (NextAuth.js Adapter)
+// -----------------------------------------------------------------------------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model User {
+  id            String      @id @default(cuid())
+  name          String?
+  email         String?     @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  documents     Document[]
+  links         Link[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// -----------------------------------------------------------------------------
+// 2. Core Document & Storage Models
+// -----------------------------------------------------------------------------
+
+model Document {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  fileKey     String   // S3 / Cloudflare R2 object key
+  fileSize    Int      // File size in bytes
+  fileType    String   // MIME type (application/pdf, etc.)
+  pageCount   Int      @default(0)
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  links       Link[]
+  views       View[]
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// -----------------------------------------------------------------------------
+// 3. Shareable Links & Access Control
+// -----------------------------------------------------------------------------
+
+model Link {
+  id             String    @id @default(cuid())
+  url            String    @unique // Unique short slug or token
+  name           String?
+  documentId     String
+  document       Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Security & Gating Policies
+  password       String?   // Hashed password if access is restricted
+  expiresAt      DateTime? // Link expiry timestamp
+  requireEmail   Boolean   @default(false) // Lead capture gate
+  allowDownload  Boolean   @default(false) // Allow viewers to download original PDF
+  isActive       Boolean   @default(true)  // Instant kill-switch toggle
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  views          View[]
+
+  @@index([documentId])
+  @@index([userId])
+  @@index([url])
+}
+
+// -----------------------------------------------------------------------------
+// 4. Analytics, Visitor Telemetry & Page Tracking
+// -----------------------------------------------------------------------------
+
+model View {
+  id             String      @id @default(cuid())
+  linkId         String
+  link           Link        @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  documentId     String
+  document       Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  // Visitor Identification & Geolocation (Captured at Edge)
+  viewerEmail    String?
+  country        String?     // Derived from Cloudflare / Vercel Edge headers
+  city           String?
+  device         String?     // Mobile, Tablet, Desktop
+  browser        String?     // Chrome, Safari, Firefox, Edge
+  os             String?     // Windows, macOS, iOS, Android
+
+  // Duration & Completion
+  totalDuration  Int         @default(0) // Total time spent in seconds
+  completionRate Float       @default(0) // Percentage of document viewed (0.0 to 1.0)
+  completed      Boolean     @default(false)
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  pageViews      PageView[]
+
+  @@index([linkId])
+  @@index([documentId])
+  @@index([createdAt])
+}
+
+model PageView {
+  id             String   @id @default(cuid())
+  viewId         String
+  view           View     @relation(fields: [viewId], references: [id], onDelete: Cascade)
+
+  pageNumber     Int      // 1-indexed page number
+  duration       Int      @default(0) // Time spent on this specific page (seconds)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([viewId])
+  @@index([pageNumber])
+}
