@@ -1,0 +1,86 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Digital Ocean Infrastructure & Cluster Mesh Health",
+      "type": "row"
+    },
+    {
+      "id": 2,
+      "title": "Consul Leader Status",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "targets": [
+        { "expr": "consul_raft_leader == 1", "legendFormat": "Consul Leader" }
+      ],
+      "options": {
+        "colorMode": "value",
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Nomad Active Nodes",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "targets": [
+        { "expr": "count(nomad_client_allocated_cpu)", "legendFormat": "Nomad Clients" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Kafka Under-Replicated Partitions",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "targets": [
+        { "expr": "sum(kafka_topic_partition_under_replicated_partition)", "legendFormat": "URP Count" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Bastion Ingress Network Traffic",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "targets": [
+        { "expr": "rate(node_network_receive_bytes_total{instance=~'.*bastion.*'}[5m])", "legendFormat": "{{device}} Inbound" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Nomad Job Allocations (Running vs Failed)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "targets": [
+        { "expr": "nomad_client_allocations_running", "legendFormat": "Running Allocs" },
+        { "expr": "nomad_client_allocations_failed", "legendFormat": "Failed Allocs" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Kafka Broker Network Message Throughput",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+      "targets": [
+        { "expr": "rate(kafka_network_io_bytes_total[1m])", "legendFormat": "{{direction}}" }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["digitalocean", "consul", "nomad", "kafka", "bastion"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "DigitalOcean Cluster Overview",
+  "uid": "do-cluster-overview"
+}

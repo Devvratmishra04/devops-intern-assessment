@@ -1,0 +1,65 @@
+#cloud-config
+# Consul & Nomad Server Cluster Bootstrap
+package_update: true
+packages:
+  - curl
+  - jq
+  - unzip
+  - gpg
+  - lsb-release
+
+runcmd:
+  # Install HashiCorp Apt Repository
+  - curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+  - echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
+  - apt-get update -y
+  - apt-get install -y consul nomad
+
+  # Configure Consul Server
+  - mkdir -p /etc/consul.d /opt/consul/data
+  - chown -R consul:consul /etc/consul.d /opt/consul
+  - |
+    cat <<EOF > /etc/consul.d/consul.hcl
+    datacenter = "${DATACENTER}"
+    data_dir = "/opt/consul/data"
+    server = true
+    bootstrap_expect = ${SERVER_COUNT}
+    bind_addr = "{{ GetInterfaceIP \"eth1\" }}"
+    client_addr = "0.0.0.0"
+    ui_config {
+      enabled = true
+    }
+    connect {
+      enabled = true
+    }
+    retry_join = ["provider=digitalocean tag_name=consul-server"]
+    EOF
+  - systemctl enable consul
+  - systemctl start consul
+
+  # Configure Nomad Server
+  - mkdir -p /etc/nomad.d /opt/nomad/data
+  - |
+    cat <<EOF > /etc/nomad.d/nomad.hcl
+    datacenter = "${DATACENTER}"
+    data_dir = "/opt/nomad/data"
+    bind_addr = "{{ GetInterfaceIP \"eth1\" }}"
+
+    server {
+      enabled = true
+      bootstrap_expect = ${SERVER_COUNT}
+    }
+
+    consul {
+      address = "127.0.0.1:8500"
+      auto_advertise = true
+      server_auto_join = true
+      client_auto_join = true
+    }
+
+    ui {
+      enabled = true
+    }
+    EOF
+  - systemctl enable nomad
+  - systemctl start nomad

@@ -1,0 +1,31 @@
+# DigitalOcean API Personal Access Token
+do_token = "dop_v1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# Deployment Environment
+environment = "prod"
+
+# Datacenter Region (nyc1, fra1, ams3, sgp1, blr1)
+region = "nyc1"
+
+# Datacenter Name
+datacenter = "dc1"
+
+# Private VPC CIDR Block
+vpc_ip_range = "10.136.0.0/16"
+
+# Cluster Admin SSH Public Key
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC12345... devops-admin@company.com"
+
+# Authorized External Subnets for Bastion SSH (CIDRs)
+admin_allowed_cidrs = [
+  "203.0.113.50/32", # Corporate Office IP
+  "198.51.100.0/24"  # Engineering VPN CIDR
+]
+
+# Droplet Specifications
+bastion_droplet_size = "s-1vcpu-1gb"
+server_droplet_size  = "s-2vcpu-4gb"
+server_count         = 3
+
+worker_droplet_size  = "s-4vcpu-8gb"
+worker_count         = 3

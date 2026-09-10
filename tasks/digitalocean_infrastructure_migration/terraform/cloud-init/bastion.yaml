@@ -1,0 +1,43 @@
+#cloud-config
+# Bastion Host Hardening and Gateway Provisioning
+package_update: true
+package_upgrade: true
+
+packages:
+  - fail2ban
+  - ufw
+  - iptables-persistent
+  - htop
+  - curl
+  - jq
+  - net-tools
+  - wireguard
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/99-bastion-hardening.conf
+    permissions: '0600'
+    content: |
+      PermitRootLogin prohibit-password
+      PasswordAuthentication no
+      PubkeyAuthentication yes
+      X11Forwarding no
+      AllowAgentForwarding yes
+      AllowTcpForwarding yes
+      MaxAuthTries 3
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+      LogLevel VERBOSE
+
+  - path: /etc/sysctl.d/99-ipforward.conf
+    permissions: '0644'
+    content: |
+      net.ipv4.ip_forward = 1
+      net.ipv4.conf.all.send_redirects = 0
+      net.ipv4.conf.default.send_redirects = 0
+
+runcmd:
+  - systemctl restart ssh
+  - systemctl enable fail2ban
+  - systemctl start fail2ban
+  - sysctl --system
+  - echo "Bastion Host initialization complete." > /var/log/bastion-init.log
