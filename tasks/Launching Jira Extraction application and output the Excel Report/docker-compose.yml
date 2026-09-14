@@ -1,0 +1,35 @@
+# ── Jira Extraction Application – Docker Compose ─────────────
+# Usage:
+#   docker compose up              # Run extraction with defaults
+#   docker compose run jira-extract --template open_bugs
+#   docker compose run jira-extract --jql "project = DEV" --limit 50
+# ──────────────────────────────────────────────────────────────
+
+services:
+  jira-extract:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jira-extraction
+    restart: "no"
+
+    # Credentials are injected from the local .env file
+    env_file:
+      - .env
+
+    # Mount local output directory so reports persist after container exits
+    volumes:
+      - ./output:/app/output
+
+    # Resource limits – keeps the container lightweight
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+    # Override default CMD with custom arguments if needed
+    # command: ["--template", "open_bugs"]

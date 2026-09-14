@@ -1,0 +1,33 @@
+{
+    "default_jql": "project IS NOT EMPTY ORDER BY created DESC",
+    "max_results_per_page": 100,
+    "output_directory": "output",
+    "fields": [
+        "key",
+        "summary",
+        "status",
+        "priority",
+        "issuetype",
+        "assignee",
+        "reporter",
+        "created",
+        "updated",
+        "resolutiondate",
+        "resolution",
+        "labels",
+        "components",
+        "fixVersions",
+        "sprint",
+        "timeoriginalestimate",
+        "timeestimate",
+        "timespent",
+        "description"
+    ],
+    "report_templates": {
+        "all_issues": "project IS NOT EMPTY ORDER BY created DESC",
+        "open_bugs": "issuetype = Bug AND resolution = Unresolved ORDER BY priority DESC",
+        "recent_30_days": "created >= -30d ORDER BY created DESC",
+        "my_open_issues": "assignee = currentUser() AND resolution = Unresolved ORDER BY updated DESC",
+        "sprint_active": "sprint in openSprints() ORDER BY rank ASC"
+    }
+}
